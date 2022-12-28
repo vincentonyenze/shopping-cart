@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a href="#results-title" class="skip-link">Skip to products</a>
+
+  <header class="site-header">
+    <div class="site-header__inner container">
+      <a href="./" class="logo">🛍️ <span>Shop</span></a>
+
+      <form id="search-form" class="search" role="search">
+        <label for="search-input" class="visually-hidden">Search products</label>
+        <input type="search" id="search-input" class="search__input" name="q"
+               placeholder="Search products, brands…" autocomplete="off">
+      </form>
+    </div>
+  </header>
+
+  <div class="layout container">
+    <!-- Filters. A real <form>: checkboxes, radios and number inputs come
+         with keyboard support and labels for free. JavaScript reads it
+         and stops it from submitting. -->
+    <aside id="filters" class="filters" aria-labelledby="filters-title">
+      <div class="filters__header">
+        <h2 id="filters-title" class="filters__title">Filters</h2>
+        <!-- Only shown on phones, where the filters slide in over the page -->
+        <button type="button" id="filters-close" class="icon-btn filters__close" aria-label="Close filters">✕</button>
+      </div>
+
+      <form id="filters-form" class="filters__form">
+        <!-- <fieldset> + <legend>: a group of controls with one name.
+             Screen readers say "Category, group" before the checkboxes. -->
+        <fieldset class="filter-group">
+          <legend class="filter-group__title">Category</legend>
+          <!-- One checkbox per category, with a count, added by JavaScript -->
+          <div id="category-list" class="filter-group__options"></div>
+        </fieldset>
+
+        <fieldset class="filter-group">
+          <legend class="filter-group__title">Price</legend>
+          <div class="price-range">
+            <label class="price-range__field">
+              <span class="visually-hidden">Minimum price in dollars</span>
+              <span class="price-range__currency" aria-hidden="true">$</span>
+              <input type="number" id="price-min" name="min" min="0" step="1"
+                     inputmode="numeric" placeholder="Min">
+            </label>
+            <span class="price-range__to" aria-hidden="true">to</span>
+            <label class="price-range__field">
+              <span class="visually-hidden">Maximum price in dollars</span>
+              <span class="price-range__currency" aria-hidden="true">$</span>
+              <input type="number" id="price-max" name="max" min="0" step="1"
+                     inputmode="numeric" placeholder="Max">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="filter-group">
+          <legend class="filter-group__title">Customer rating</legend>
+          <div class="filter-group__options">
+            <!-- Radios with the same name: only one can be chosen -->
+            <label class="option">
+              <input type="radio" name="rating" value="4">
+              <span><span class="stars" aria-hidden="true">★★★★☆</span> 4 &amp; up</span>
+            </label>
+            <label class="option">
+              <input type="radio" name="rating" value="3">
+              <span><span class="stars" aria-hidden="true">★★★☆☆</span> 3 &amp; up</span>
+            </label>
+            <label class="option">
+              <input type="radio" name="rating" value="0" checked>
+              <span>Any rating</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="filter-group">
+          <legend class="filter-group__title">Availability</legend>
+          <div class="filter-group__options">
+            <label class="option">
+              <input type="checkbox" name="inStock" id="in-stock">
+              <span>In stock only</span>
+            </label>
+            <label class="option">
+              <input type="checkbox" name="onSale" id="on-sale">
+              <span>On sale</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="filters__actions">
+          <button type="button" id="clear-filters" class="btn btn--ghost">Clear all</button>
+          <!-- Phones only: close the panel and look at the results -->
+          <button type="button" id="filters-done" class="btn filters__done">Show results</button>
+        </div>
+      </form>
+    </aside>
+
+    <main class="results" aria-labelledby="results-title">
+      <div class="toolbar">
+        <div class="toolbar__info">
+          <h1 id="results-title" class="toolbar__title" tabindex="-1">All products</h1>
+          <!-- aria-live: screen readers hear "24 products" when filters change -->
+          <p id="results-count" class="toolbar__count" aria-live="polite"></p>
+        </div>
+
+        <div class="toolbar__controls">
+          <button type="button" id="filters-toggle" class="btn btn--ghost filters-toggle"
+                  aria-controls="filters" aria-expanded="false">
+            ⚙️ Filters <span id="filters-toggle-count" class="badge" hidden></span>
+          </button>
+
+          <label class="sort">
+            <span class="sort__label">Sort by</span>
+            <select id="sort-select" name="sort">
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="rating">Customer rating</option>
+              <option value="newest">Newest</option>
+              <option value="popular">Most reviewed</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Removable chips for each active filter: "Shoes ✕", "Under $50 ✕" -->
+      <ul id="active-filters" class="active-filters" aria-label="Active filters" hidden></ul>
+
+      <!-- Loading, error and "nothing found" messages -->
+      <div id="status" class="status" role="status" hidden>
+        <span id="status-icon" class="status__icon" aria-hidden="true"></span>
+        <p id="status-message" class="status__message"></p>
+        <button type="button" id="status-action" class="btn" hidden></button>
+      </div>
+
+      <ul id="product-grid" class="product-grid" aria-label="Products"></ul>
+
+      <!-- Page links, e.g. ‹ 1 2 3 … 10 › -->
+      <nav id="pagination" class="pagination" aria-label="Pagination" hidden></nav>
+    </main>
+  </div>
+
+  <!-- One product card. JavaScript copies this for every product. -->
+  <template id="product-card-template">
+    <li>
+      <article class="product-card">
+        <div class="product-card__image">
+          <!-- width/height: the browser keeps the space before the photo
+               loads, so the grid doesn't jump. alt is set by JavaScript. -->
+          <img class="product-card__photo" width="300" height="300" alt="">
+          <span class="product-card__badge" hidden></span>
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__category"></p>
+          <h3 class="product-card__name"></h3>
+          <p class="product-card__brand"></p>
+          <p class="product-card__rating">
+            <span class="stars" aria-hidden="true"></span>
+            <span class="product-card__rating-text"></span>
+          </p>
+          <p class="product-card__price">
+            <span class="product-card__price-now"></span>
+            <!-- <s>: a price that's no longer right (the old price before a sale) -->
+            <s class="product-card__price-was" hidden></s>
+          </p>
+          <p class="product-card__stock"></p>
+        </div>
+      </article>
+    </li>
+  </template>
+</body>
+</html>

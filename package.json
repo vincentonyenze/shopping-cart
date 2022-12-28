@@ -1,0 +1,13 @@
+{
+  "name": "shopping-cart",
+  "version": "1.0.0",
+  "description": "A shop with a working cart: quantities, stock limits, totals, promo codes and a cart that survives a refresh.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "author": "Vinco Dev",
+  "license": "MIT"
+}
