@@ -19,6 +19,15 @@
         <input type="search" id="search-input" class="search__input" name="q"
                placeholder="Search products, brands…" autocomplete="off">
       </form>
+
+      <!-- Opens the cart. aria-haspopup="dialog" tells screen readers that
+           it opens a dialog; JavaScript keeps its label up to date
+           ("Cart, 3 items") because the badge is just a number. -->
+      <button type="button" id="cart-btn" class="cart-btn" aria-haspopup="dialog" aria-label="Cart, empty">
+        <span aria-hidden="true">🛒</span>
+        <span class="cart-btn__text">Cart</span>
+        <span id="cart-count" class="cart-btn__count" aria-hidden="true" hidden>0</span>
+      </button>
     </div>
   </header>
 
@@ -171,9 +180,131 @@
             <s class="product-card__price-was" hidden></s>
           </p>
           <p class="product-card__stock"></p>
+          <!-- "Add to cart", "Added ✓", "Sold out" or "Max in cart" -->
+          <button type="button" class="add-btn">Add to cart</button>
         </div>
       </article>
     </li>
   </template>
+
+  <!-- ===== The cart =====
+       A <dialog> opened with showModal(): Esc closes it, the page behind
+       becomes inert, and focus is kept inside, all built in. CSS makes it
+       slide in from the right. -->
+  <dialog id="cart" class="cart" aria-labelledby="cart-title">
+    <header class="cart__header">
+      <h2 id="cart-title" class="cart__title">Your cart <span id="cart-title-count"></span></h2>
+      <button type="button" id="cart-close" class="icon-btn" aria-label="Close cart">✕</button>
+    </header>
+
+    <!-- Messages about the cart itself, e.g. "A price has changed" -->
+    <p id="cart-notice" class="cart__notice" role="status" hidden></p>
+
+    <!-- Shown instead of everything below when the cart is empty -->
+    <div id="cart-empty" class="cart__empty">
+      <span class="cart__empty-icon" aria-hidden="true">🛒</span>
+      <p>Your cart is empty.</p>
+      <button type="button" id="cart-continue" class="btn">Continue shopping</button>
+    </div>
+
+    <div id="cart-content" class="cart__content" hidden>
+      <ul id="cart-lines" class="cart__lines" aria-label="Products in your cart"></ul>
+
+      <div class="cart__footer">
+        <!-- "Add $12.50 more for free shipping" with a progress bar -->
+        <div class="shipping">
+          <p id="shipping-message" class="shipping__message"></p>
+          <!-- <progress>: the browser's own progress bar (value out of max) -->
+          <progress id="shipping-progress" class="shipping__bar" max="5000" value="0"
+                    aria-labelledby="shipping-message"></progress>
+        </div>
+
+        <!-- Promo codes (Step 9) -->
+        <form id="promo-form" class="promo" novalidate>
+          <label for="promo-input" class="visually-hidden">Promo code</label>
+          <input type="text" id="promo-input" class="promo__input" name="code"
+                 placeholder="Promo code" autocomplete="off" autocapitalize="characters"
+                 aria-describedby="promo-message">
+          <button type="submit" class="btn btn--ghost">Apply</button>
+        </form>
+        <p id="promo-message" class="promo__message" aria-live="polite"></p>
+
+        <!-- The order summary: a list of names and amounts -->
+        <dl class="summary">
+          <div class="summary__row">
+            <dt>Subtotal</dt>
+            <dd id="summary-subtotal"></dd>
+          </div>
+          <div id="summary-savings-row" class="summary__row summary__row--savings" hidden>
+            <dt>Sale savings</dt>
+            <dd id="summary-savings"></dd>
+          </div>
+          <div id="summary-promo-row" class="summary__row summary__row--savings" hidden>
+            <dt>
+              Promo <span id="summary-promo-code"></span>
+              <button type="button" id="promo-remove" class="link-btn">Remove</button>
+            </dt>
+            <dd id="summary-promo"></dd>
+          </div>
+          <div class="summary__row">
+            <dt>Shipping</dt>
+            <dd id="summary-shipping"></dd>
+          </div>
+          <div class="summary__row">
+            <dt>Tax (8%)</dt>
+            <dd id="summary-tax"></dd>
+          </div>
+          <div class="summary__row summary__row--total">
+            <dt>Total</dt>
+            <dd id="summary-total"></dd>
+          </div>
+        </dl>
+
+        <button type="button" id="checkout-btn" class="btn checkout-btn">Checkout</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- One line in the cart. JavaScript copies this for every product. -->
+  <template id="cart-line-template">
+    <li class="cart-line">
+      <img class="cart-line__photo" width="72" height="72" alt="">
+      <div class="cart-line__info">
+        <p class="cart-line__name"></p>
+        <p class="cart-line__price">
+          <span class="cart-line__unit"></span>
+          <s class="cart-line__was" hidden></s>
+        </p>
+        <!-- "Only 3 left", "Limit of 10 per order" -->
+        <p class="cart-line__note" hidden></p>
+
+        <!-- − 2 +  A stepper: two buttons around a number box -->
+        <div class="stepper" role="group">
+          <button type="button" class="stepper__btn" data-step="-1">−</button>
+          <input type="number" class="stepper__input" min="1" inputmode="numeric">
+          <button type="button" class="stepper__btn" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="cart-line__side">
+        <p class="cart-line__total"></p>
+        <button type="button" class="link-btn cart-line__remove">Remove</button>
+      </div>
+    </li>
+  </template>
+
+  <!-- "Removed iPhone 5s · Undo" -->
+  <div id="toast" class="toast" role="status" hidden>
+    <span id="toast-message"></span>
+    <button type="button" id="toast-undo" class="toast__action">Undo</button>
+  </div>
+
+  <!-- Shown after "Checkout" (a pretend order: no payment is taken) -->
+  <dialog id="order" class="order" aria-labelledby="order-title">
+    <span class="order__icon" aria-hidden="true">🎉</span>
+    <h2 id="order-title" class="order__title">Thank you for your order!</h2>
+    <p id="order-summary" class="order__summary"></p>
+    <p class="order__note">This is a practice shop: nothing was charged and nothing will arrive.</p>
+    <button type="button" id="order-close" class="btn">Continue shopping</button>
+  </dialog>
 </body>
 </html>
