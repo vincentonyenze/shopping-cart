@@ -662,6 +662,472 @@ body {
   color: var(--color-muted);
 }
 
+/* ===== Cart button in the header ===== */
+.cart-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto; /* pushes it to the right of the header */
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-weight: 600;
+}
+
+.cart-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.cart-btn__count {
+  min-width: 1.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* A quick "bump" when something is added. JavaScript adds the class and
+   removes it when the animation ends, so it can run again next time. */
+.cart-btn__count--bump {
+  animation: bump 0.35s ease-out;
+}
+
+@keyframes bump {
+  40% {
+    transform: scale(1.4);
+  }
+}
+
+/* ===== Add to cart ===== */
+.add-btn {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.55rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-small);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+/* Already in the cart: lighter, so "Add one more" doesn't shout */
+.add-btn--in-cart {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.add-btn--in-cart:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Just added: a moment of green */
+.add-btn--added,
+.add-btn--added:hover:not(:disabled) {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+
+.add-btn:disabled {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+/* A button that looks like a link (Remove, etc.) */
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  color: var(--color-sale);
+}
+
+/* ===== The cart drawer ===== */
+/* A <dialog> normally sits in the middle of the screen. These rules pin it
+   to the right edge, full height, and slide it in. */
+.cart {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(440px, 100%);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.25);
+}
+
+.cart[open] {
+  display: flex;
+  flex-direction: column;
+  animation: slide-in 0.25s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.cart::backdrop,
+.order::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* The page behind an open dialog shouldn't scroll */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+.cart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cart__title {
+  font-size: 1.2rem;
+}
+
+.cart__title span {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.cart__notice {
+  margin: 0.75rem 1.25rem 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-small);
+  background: #fff4e5;
+  color: #8a4b00;
+  font-size: 0.875rem;
+}
+
+.cart__empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.cart__empty-icon {
+  font-size: 3.5rem;
+}
+
+/* The lines scroll; the footer with the totals always stays visible */
+.cart__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0; /* lets the list shrink and scroll inside the flex column */
+}
+
+.cart__lines {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem;
+}
+
+/* ===== One line in the cart ===== */
+.cart-line {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 0.9rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cart-line:last-child {
+  border-bottom: none;
+}
+
+.cart-line__photo {
+  width: 72px;
+  height: 72px;
+  padding: 0.3rem;
+  border-radius: var(--radius-small);
+  background: #fff;
+  object-fit: contain;
+}
+
+.cart-line__info {
+  display: grid;
+  gap: 0.2rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.cart-line__name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cart-line__price {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.cart-line__note {
+  color: #b54708;
+  font-size: 0.8rem;
+}
+
+.cart-line__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.cart-line__total {
+  font-weight: 700;
+}
+
+/* ===== Quantity stepper: [−] 2 [+] ===== */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  overflow: hidden;
+}
+
+.stepper__btn {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: var(--color-bg);
+  font-size: 1.1rem;
+}
+
+.stepper__btn:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.stepper__btn:disabled {
+  color: var(--color-border);
+  cursor: not-allowed;
+}
+
+.stepper__input {
+  width: 2.75rem;
+  height: 2rem;
+  border: none;
+  background: var(--color-surface);
+  text-align: center;
+  font-weight: 600;
+  /* Hide the browser's tiny up/down arrows: the − and + buttons do that */
+  appearance: textfield;
+}
+
+.stepper__input::-webkit-inner-spin-button,
+.stepper__input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* ===== Cart footer: shipping, promo, totals ===== */
+.cart__footer {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.shipping__message {
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.shipping__message strong {
+  color: var(--color-primary);
+}
+
+/* Styling <progress> takes rules for each browser's own parts */
+.shipping__bar {
+  width: 100%;
+  height: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-border);
+  appearance: none;
+  overflow: hidden;
+}
+
+.shipping__bar::-webkit-progress-bar {
+  background: var(--color-border);
+}
+
+.shipping__bar::-webkit-progress-value {
+  background: var(--color-success);
+  transition: width 0.3s ease;
+}
+
+.shipping__bar::-moz-progress-bar {
+  background: var(--color-success);
+}
+
+.promo {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.promo__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  text-transform: uppercase;
+}
+
+.promo__input::placeholder {
+  text-transform: none;
+}
+
+.promo__message {
+  min-height: 1.2em;
+  margin-top: -0.5rem;
+  font-size: 0.85rem;
+}
+
+.promo__message--error {
+  color: var(--color-sale);
+}
+
+.promo__message--success {
+  color: var(--color-success);
+}
+
+.summary {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.summary dt {
+  color: var(--color-muted);
+}
+
+.summary dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums; /* digits line up in a column */
+}
+
+.summary__row--savings dd {
+  color: var(--color-success);
+}
+
+.summary__row--total {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.summary__row--total dt {
+  color: var(--color-text);
+}
+
+.checkout-btn {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1rem;
+}
+
+/* ===== Undo toast ===== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-small);
+  background: #1b1f27;
+  color: #fff;
+  box-shadow: var(--shadow-hover);
+  transform: translateX(-50%);
+}
+
+.toast__action {
+  border: none;
+  background: none;
+  color: #8db2ff;
+  font-weight: 700;
+}
+
+/* ===== Order confirmation ===== */
+.order {
+  width: min(420px, calc(100% - 2rem));
+  padding: 2rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.order[open] {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.order__icon {
+  font-size: 3rem;
+}
+
+.order__title {
+  font-size: 1.35rem;
+}
+
+.order__note {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
 /* ===== Tablets and phones: filters slide in from the left ===== */
 @media (max-width: 900px) {
   .layout {
@@ -738,5 +1204,19 @@ body {
   .product-card__photo,
   .filters {
     transition: none;
+  }
+}
+
+/* Small screens: the cart button keeps just its icon and count */
+@media (max-width: 600px) {
+  .cart-btn__text {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart[open],
+  .cart-btn__count--bump {
+    animation: none;
   }
 }
