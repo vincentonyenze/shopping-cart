@@ -14,6 +14,14 @@ import {
 import { debounce } from "./utils.js";
 import { queryToSearchParams, searchParamsToQuery } from "./url.js";
 import { activeFilterChips } from "./chips.js";
+import { EMPTY_CART, addToCart, itemCount } from "./cart.js";
+import {
+  renderCartButton,
+  updateAddButtons,
+  flashAdded,
+  announce,
+  limitMessage,
+} from "./cart-ui.js";
 import {
   elements,
   renderProducts,
@@ -58,6 +66,12 @@ const EMPTY_QUERY = {
 let catalog = { categories: [], products: [] };
 // { electronics: "Electronics", ... }, for looking names up quickly
 let categoryNames = {};
+// id -> product, for instant lookups from the cart
+let productsById = new Map();
+
+// What's in the cart: { items: [{ productId, quantity }] }
+// (Step 10 saves it, so it survives a refresh)
+let cart = EMPTY_CART;
 
 // What the shopper has asked for. Every change goes: update the query,
 // then commit() (which draws it). Any change other than the page itself goes back to
@@ -88,6 +102,7 @@ function render({ history: historyMode = "replace" } = {}) {
   renderProducts(page.items, categoryNames);
   renderPagination(page.page, page.totalPages, pageNumbers(page.page, page.totalPages));
   renderActiveFilters(activeFilterChips(query, categoryNames));
+  updateAddButtons(cart, productsById);
   renderShowResults(results.length);
   updateUrl(historyMode);
   updateCategoryOptions(countByCategory(catalog.products, query, categoryNames), query.categories);
@@ -297,6 +312,35 @@ function handleScreenChange() {
   if (!drawerScreen.matches) closeFilters({ returnFocus: false });
 }
 
+// ===== The cart =====
+// Every change to the cart goes through here, so the badge and the
+// buttons can never get out of step with it.
+function updateCart(nextCart, { bump = false } = {}) {
+  cart = nextCart;
+  renderCartButton(cart, { bump });
+  updateAddButtons(cart, productsById);
+}
+
+// One listener for every "Add to cart" button in the grid
+function handleAddClick(event) {
+  const button = event.target.closest(".add-btn");
+  if (!button) return;
+  const product = productsById.get(Number(button.closest(".product-card").dataset.productId));
+  if (!product) return;
+
+  const result = addToCart(cart, product);
+  if (result.added === 0) {
+    // Usually the button is already disabled; this covers a quick double click
+    announce(limitMessage(result.limitedBy, product));
+    return;
+  }
+
+  updateCart(result.cart, { bump: true });
+  flashAdded(button, () => updateAddButtons(cart, productsById));
+  const count = itemCount(cart);
+  announce(`Added ${product.name} to your cart. ${count} item${count === 1 ? "" : "s"} in cart.`);
+}
+
 // Back to a fresh start: no search, no filters. The sort order stays:
 // it's how you like to look at things, not something you filtered by.
 function clearAll() {
@@ -323,6 +367,8 @@ async function start() {
   }
 
   categoryNames = Object.fromEntries(catalog.categories.map((c) => [c.slug, c.name]));
+  productsById = new Map(catalog.products.map((product) => [product.id, product]));
+  renderCartButton(cart);
   renderCategoryOptions(catalog.categories);
 
   // Start from whatever the URL asks for. The categories have to be loaded
@@ -347,6 +393,7 @@ elements.clearFilters.addEventListener("click", clearAll);
 elements.sortSelect.addEventListener("change", handleSortChange);
 elements.pagination.addEventListener("click", handlePaginationClick);
 elements.activeFilters.addEventListener("click", handleChipClick);
+elements.grid.addEventListener("click", handleAddClick);
 elements.filtersToggle.addEventListener("click", openFilters);
 elements.filtersClose.addEventListener("click", () => closeFilters());
 elements.filtersDone.addEventListener("click", () => closeFilters());

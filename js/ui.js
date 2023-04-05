@@ -41,6 +41,8 @@ function createProductCard(product, categoryNames, index) {
   const fragment = elements.cardTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".product-card");
   const $ = (selector) => card.querySelector(selector);
+  // So a click on its "Add to cart" button knows which product it's for
+  card.dataset.productId = product.id;
 
   // alt describes the photo for people who can't see it. The name is
   // the best description we have of a product shot.

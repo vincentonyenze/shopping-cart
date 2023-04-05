@@ -292,6 +292,10 @@
     </li>
   </template>
 
+  <!-- Screen readers read this out when it changes: "Added iPhone 5s to
+       your cart". Sighted users see the button and badge change instead. -->
+  <p id="announcer" class="visually-hidden" aria-live="polite"></p>
+
   <!-- "Removed iPhone 5s · Undo" -->
   <div id="toast" class="toast" role="status" hidden>
     <span id="toast-message"></span>
