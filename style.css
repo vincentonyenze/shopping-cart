@@ -1207,6 +1207,20 @@ body:has(dialog[open]) {
   }
 }
 
+/* Short screens (a laptop with a small window, a phone sideways): the
+   footer would leave room for barely one product, so the whole drawer
+   scrolls together instead */
+@media (max-height: 760px) {
+  .cart__content {
+    overflow-y: auto;
+  }
+
+  .cart__lines {
+    flex: none;
+    overflow: visible;
+  }
+}
+
 /* Small screens: the cart button keeps just its icon and count */
 @media (max-width: 600px) {
   .cart-btn__text {

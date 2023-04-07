@@ -14,13 +14,24 @@ import {
 import { debounce } from "./utils.js";
 import { queryToSearchParams, searchParamsToQuery } from "./url.js";
 import { activeFilterChips } from "./chips.js";
-import { EMPTY_CART, addToCart, itemCount } from "./cart.js";
+import {
+  EMPTY_CART,
+  addToCart,
+  itemCount,
+  quantityOf,
+  setQuantity,
+  removeFromCart,
+} from "./cart.js";
+import { calculateTotals } from "./totals.js";
 import {
   renderCartButton,
   updateAddButtons,
   flashAdded,
   announce,
   limitMessage,
+  cartElements,
+  renderCartDrawer,
+  focusLineAt,
 } from "./cart-ui.js";
 import {
   elements,
@@ -319,6 +330,7 @@ function updateCart(nextCart, { bump = false } = {}) {
   cart = nextCart;
   renderCartButton(cart, { bump });
   updateAddButtons(cart, productsById);
+  renderCartDrawer(calculateTotals(cart, productsById));
 }
 
 // One listener for every "Add to cart" button in the grid
@@ -339,6 +351,61 @@ function handleAddClick(event) {
   flashAdded(button, () => updateAddButtons(cart, productsById));
   const count = itemCount(cart);
   announce(`Added ${product.name} to your cart. ${count} item${count === 1 ? "" : "s"} in cart.`);
+}
+
+// ===== The cart drawer =====
+function openCart() {
+  renderCartDrawer(calculateTotals(cart, productsById));
+  // showModal(): Esc closes it, the page behind is blocked, and focus
+  // moves inside. When it closes, focus goes back to the 🛒 button.
+  cartElements.drawer.showModal();
+}
+
+function closeCart() {
+  cartElements.drawer.close();
+}
+
+// Clicks on the dark backdrop land on the <dialog> element itself
+function handleDrawerClick(event) {
+  if (event.target === cartElements.drawer) closeCart();
+}
+
+// − / + and Remove, for every line (one listener on the list)
+function handleLinesClick(event) {
+  const line = event.target.closest(".cart-line");
+  if (!line) return;
+  const product = productsById.get(Number(line.dataset.productId));
+
+  const stepButton = event.target.closest(".stepper__btn");
+  if (stepButton) {
+    changeQuantity(product, quantityOf(cart, product.id) + Number(stepButton.dataset.step));
+    return;
+  }
+
+  if (event.target.closest(".cart-line__remove")) {
+    const index = [...cartElements.lines.children].indexOf(line);
+    updateCart(removeFromCart(cart, product.id).cart);
+    announce(`Removed ${product.name} from your cart.`);
+    focusLineAt(index);
+  }
+}
+
+// A number typed into a quantity box, applied when you leave the box or
+// press Enter ("change" fires then, not on every key)
+function handleQuantityTyped(event) {
+  const input = event.target.closest(".stepper__input");
+  if (!input) return;
+  const product = productsById.get(Number(input.closest(".cart-line").dataset.productId));
+  const typed = input.value.trim() === "" ? NaN : Number(input.value);
+  changeQuantity(product, typed);
+  // Show what the cart actually holds now (e.g. 99 became 10)
+  input.value = quantityOf(cart, product.id) || "";
+}
+
+function changeQuantity(product, quantity) {
+  const result = setQuantity(cart, product, quantity);
+  updateCart(result.cart);
+  if (result.limitedBy) announce(limitMessage(result.limitedBy, product));
 }
 
 // Back to a fresh start: no search, no filters. The sort order stays:
@@ -394,6 +461,12 @@ elements.sortSelect.addEventListener("change", handleSortChange);
 elements.pagination.addEventListener("click", handlePaginationClick);
 elements.activeFilters.addEventListener("click", handleChipClick);
 elements.grid.addEventListener("click", handleAddClick);
+cartElements.cartBtn.addEventListener("click", openCart);
+cartElements.drawerClose.addEventListener("click", closeCart);
+cartElements.continueBtn.addEventListener("click", closeCart);
+cartElements.drawer.addEventListener("click", handleDrawerClick);
+cartElements.lines.addEventListener("click", handleLinesClick);
+cartElements.lines.addEventListener("change", handleQuantityTyped);
 elements.filtersToggle.addEventListener("click", openFilters);
 elements.filtersClose.addEventListener("click", () => closeFilters());
 elements.filtersDone.addEventListener("click", () => closeFilters());
