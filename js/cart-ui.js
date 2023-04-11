@@ -3,6 +3,7 @@
 // drawer. Like ui.js, these functions only draw; they never change the cart.
 import { quantityOf, itemCount, maxQuantity, MAX_PER_PRODUCT } from "./cart.js";
 import { formatPrice } from "./format.js";
+import { FREE_SHIPPING_FROM_CENTS } from "./totals.js";
 
 export const cartElements = {
   grid: document.getElementById("product-grid"),
@@ -17,6 +18,15 @@ export const cartElements = {
   content: document.getElementById("cart-content"),
   lines: document.getElementById("cart-lines"),
   lineTemplate: document.getElementById("cart-line-template"),
+  shippingMessage: document.getElementById("shipping-message"),
+  shippingProgress: document.getElementById("shipping-progress"),
+  subtotal: document.getElementById("summary-subtotal"),
+  savingsRow: document.getElementById("summary-savings-row"),
+  savings: document.getElementById("summary-savings"),
+  shipping: document.getElementById("summary-shipping"),
+  tax: document.getElementById("summary-tax"),
+  total: document.getElementById("summary-total"),
+  checkoutBtn: document.getElementById("checkout-btn"),
 };
 
 // How long "Added ✓" shows before the button goes back to normal
@@ -86,12 +96,18 @@ export function flashAdded(button, onDone) {
 }
 
 // ===== Announcements =====
-// Clearing first means the same message twice in a row is still read out
+// Clearing first means the same message twice in a row is still read out.
+// A short timer (not requestAnimationFrame) puts the message back: frames
+// pause when the window isn't being drawn, and an announcement shouldn't
+// wait for that. The newest message always wins.
+let announceTimer = null;
+
 export function announce(message) {
+  clearTimeout(announceTimer);
   cartElements.announcer.textContent = "";
-  requestAnimationFrame(() => {
+  announceTimer = setTimeout(() => {
     cartElements.announcer.textContent = message;
-  });
+  }, 50);
 }
 
 // Why addToCart() stopped, in words: "Only 3 in stock"
@@ -193,6 +209,43 @@ function renderLines(lines) {
   for (const li of existing.values()) li.remove();
 }
 
+// ===== The cart drawer: free shipping and the summary =====
+// "Add $12.50 more for free shipping" with a bar filling up, or a
+// "you've got it" message once the cart is over the line
+function renderShipping(totals) {
+  const remaining = totals.freeShippingRemainingCents;
+  const message = cartElements.shippingMessage;
+
+  if (remaining > 0) {
+    // Built from nodes (not innerHTML) so only the amount is bold
+    const amount = document.createElement("strong");
+    amount.textContent = formatPrice(remaining);
+    message.replaceChildren("Add ", amount, " more for free shipping");
+  } else {
+    message.textContent = "🎉 You've got free shipping!";
+  }
+
+  // The bar's max is the free-shipping line itself, in cents. Anything
+  // over it just shows a full bar.
+  cartElements.shippingProgress.max = FREE_SHIPPING_FROM_CENTS;
+  cartElements.shippingProgress.value = Math.min(totals.subtotalCents, FREE_SHIPPING_FROM_CENTS);
+}
+
+function renderSummary(totals) {
+  cartElements.subtotal.textContent = formatPrice(totals.subtotalCents);
+
+  // Only show savings when there are some; a "−$0.00" line is just noise
+  cartElements.savingsRow.hidden = totals.savingsCents === 0;
+  cartElements.savings.textContent = `−${formatPrice(totals.savingsCents)}`;
+
+  cartElements.shipping.textContent =
+    totals.shippingCents === 0 ? "Free" : formatPrice(totals.shippingCents);
+  cartElements.tax.textContent = formatPrice(totals.taxCents);
+  cartElements.total.textContent = formatPrice(totals.totalCents);
+  // The amount on the button too, so it's clear what "Checkout" means
+  cartElements.checkoutBtn.textContent = `Checkout · ${formatPrice(totals.totalCents)}`;
+}
+
 // totals: from calculateTotals()
 export function renderCartDrawer(totals) {
   const isEmpty = totals.lines.length === 0;
@@ -200,6 +253,8 @@ export function renderCartDrawer(totals) {
   cartElements.content.hidden = isEmpty;
   cartElements.titleCount.textContent = isEmpty ? "" : `(${totals.itemCount})`;
   renderLines(totals.lines);
+  renderShipping(totals);
+  renderSummary(totals);
 }
 
 // After a line is removed its buttons are gone: move focus to the line

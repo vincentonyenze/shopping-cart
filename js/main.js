@@ -326,11 +326,19 @@ function handleScreenChange() {
 // ===== The cart =====
 // Every change to the cart goes through here, so the badge and the
 // buttons can never get out of step with it.
+// Returns " You've got free shipping!" when this change crossed the line
+// (or ""), so the caller can add it to what it announces.
 function updateCart(nextCart, { bump = false } = {}) {
+  const before = calculateTotals(cart, productsById);
   cart = nextCart;
+  const after = calculateTotals(cart, productsById);
+
   renderCartButton(cart, { bump });
   updateAddButtons(cart, productsById);
-  renderCartDrawer(calculateTotals(cart, productsById));
+  renderCartDrawer(after);
+
+  const unlocked = before.freeShippingRemainingCents > 0 && after.freeShippingRemainingCents === 0;
+  return unlocked ? " You've got free shipping!" : "";
 }
 
 // One listener for every "Add to cart" button in the grid
@@ -347,10 +355,10 @@ function handleAddClick(event) {
     return;
   }
 
-  updateCart(result.cart, { bump: true });
+  const extra = updateCart(result.cart, { bump: true });
   flashAdded(button, () => updateAddButtons(cart, productsById));
   const count = itemCount(cart);
-  announce(`Added ${product.name} to your cart. ${count} item${count === 1 ? "" : "s"} in cart.`);
+  announce(`Added ${product.name} to your cart. ${count} item${count === 1 ? "" : "s"} in cart.${extra}`);
 }
 
 // ===== The cart drawer =====
@@ -404,8 +412,9 @@ function handleQuantityTyped(event) {
 
 function changeQuantity(product, quantity) {
   const result = setQuantity(cart, product, quantity);
-  updateCart(result.cart);
-  if (result.limitedBy) announce(limitMessage(result.limitedBy, product));
+  const extra = updateCart(result.cart);
+  const message = (result.limitedBy ? limitMessage(result.limitedBy, product) : "") + extra;
+  if (message) announce(message.trim());
 }
 
 // Back to a fresh start: no search, no filters. The sort order stays:
