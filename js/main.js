@@ -23,6 +23,7 @@ import {
   removeFromCart,
 } from "./cart.js";
 import { calculateTotals } from "./totals.js";
+import { checkPromo } from "./promos.js";
 import {
   renderCartButton,
   updateAddButtons,
@@ -32,6 +33,7 @@ import {
   cartElements,
   renderCartDrawer,
   focusLineAt,
+  promoErrorMessage,
 } from "./cart-ui.js";
 import {
   elements,
@@ -83,6 +85,16 @@ let productsById = new Map();
 // What's in the cart: { items: [{ productId, quantity }] }
 // (Step 10 saves it, so it survives a refresh)
 let cart = EMPTY_CART;
+// The promo code the shopper applied ("SAVE10"), or null. It's kept even
+// if the cart drops below its minimum, so it switches back on by itself.
+let promoCode = null;
+// A typed code that wasn't accepted ("FREEMONEY isn't a valid code"), or ""
+let promoError = "";
+
+// The cart's totals right now, with the promo
+function cartTotals() {
+  return calculateTotals(cart, productsById, promoCode);
+}
 
 // What the shopper has asked for. Every change goes: update the query,
 // then commit() (which draws it). Any change other than the page itself goes back to
@@ -329,13 +341,13 @@ function handleScreenChange() {
 // Returns " You've got free shipping!" when this change crossed the line
 // (or ""), so the caller can add it to what it announces.
 function updateCart(nextCart, { bump = false } = {}) {
-  const before = calculateTotals(cart, productsById);
+  const before = cartTotals();
   cart = nextCart;
-  const after = calculateTotals(cart, productsById);
+  const after = cartTotals();
 
   renderCartButton(cart, { bump });
   updateAddButtons(cart, productsById);
-  renderCartDrawer(after);
+  renderCartDrawer(after, promoError);
 
   const unlocked = before.freeShippingRemainingCents > 0 && after.freeShippingRemainingCents === 0;
   return unlocked ? " You've got free shipping!" : "";
@@ -363,7 +375,7 @@ function handleAddClick(event) {
 
 // ===== The cart drawer =====
 function openCart() {
-  renderCartDrawer(calculateTotals(cart, productsById));
+  renderCartDrawer(cartTotals(), promoError);
   // showModal(): Esc closes it, the page behind is blocked, and focus
   // moves inside. When it closes, focus goes back to the 🛒 button.
   cartElements.drawer.showModal();
@@ -415,6 +427,43 @@ function changeQuantity(product, quantity) {
   const extra = updateCart(result.cart);
   const message = (result.limitedBy ? limitMessage(result.limitedBy, product) : "") + extra;
   if (message) announce(message.trim());
+}
+
+// ===== Promo codes =====
+function handlePromoSubmit(event) {
+  event.preventDefault();
+  const typed = cartElements.promoInput.value;
+  const result = checkPromo(typed, cartTotals().subtotalCents);
+
+  if (result.ok || result.reason === "minimum") {
+    // Keep a real code even if the cart is short of its minimum: the
+    // message explains how much more is needed
+    promoCode = result.code;
+    promoError = "";
+    cartElements.promoInput.value = "";
+  } else {
+    promoError = promoErrorMessage(result);
+  }
+  const totals = cartTotals();
+  renderCartDrawer(totals, promoError);
+  announce(cartElements.promoMessage.textContent);
+}
+
+function removePromo() {
+  const removed = promoCode;
+  promoCode = null;
+  promoError = "";
+  renderCartDrawer(cartTotals(), promoError);
+  announce(`Removed promo code ${removed}.`);
+  cartElements.promoInput.focus(); // the Remove button just disappeared
+}
+
+// Typing a new code clears the old error, so it doesn't sit there looking
+// like it's about the new code
+function handlePromoTyping() {
+  if (!promoError) return;
+  promoError = "";
+  renderCartDrawer(cartTotals(), promoError);
 }
 
 // Back to a fresh start: no search, no filters. The sort order stays:
@@ -476,6 +525,9 @@ cartElements.continueBtn.addEventListener("click", closeCart);
 cartElements.drawer.addEventListener("click", handleDrawerClick);
 cartElements.lines.addEventListener("click", handleLinesClick);
 cartElements.lines.addEventListener("change", handleQuantityTyped);
+cartElements.promoForm.addEventListener("submit", handlePromoSubmit);
+cartElements.promoRemove.addEventListener("click", removePromo);
+cartElements.promoInput.addEventListener("input", handlePromoTyping);
 elements.filtersToggle.addEventListener("click", openFilters);
 elements.filtersClose.addEventListener("click", () => closeFilters());
 elements.filtersDone.addEventListener("click", () => closeFilters());

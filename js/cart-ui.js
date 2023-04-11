@@ -27,6 +27,13 @@ export const cartElements = {
   tax: document.getElementById("summary-tax"),
   total: document.getElementById("summary-total"),
   checkoutBtn: document.getElementById("checkout-btn"),
+  promoForm: document.getElementById("promo-form"),
+  promoInput: document.getElementById("promo-input"),
+  promoMessage: document.getElementById("promo-message"),
+  promoRow: document.getElementById("summary-promo-row"),
+  promoCode: document.getElementById("summary-promo-code"),
+  promoAmount: document.getElementById("summary-promo"),
+  promoRemove: document.getElementById("promo-remove"),
 };
 
 // How long "Added ✓" shows before the button goes back to normal
@@ -246,8 +253,58 @@ function renderSummary(totals) {
   cartElements.checkoutBtn.textContent = `Checkout · ${formatPrice(totals.totalCents)}`;
 }
 
+// ===== Promo code =====
+function setPromoMessage(text, kind) {
+  cartElements.promoMessage.textContent = text;
+  cartElements.promoMessage.classList.toggle("promo__message--error", kind === "error");
+  cartElements.promoMessage.classList.toggle("promo__message--success", kind === "success");
+}
+
+// The promo row in the summary, and the message under the box.
+// typedError: a problem with a code that was typed but NOT applied
+// ("FREEMONEY isn't a valid code"), or "".
+function renderPromo(totals, typedError) {
+  const { promo } = totals;
+  cartElements.promoRow.hidden = !promo;
+
+  if (promo) {
+    cartElements.promoCode.textContent = promo.code;
+    if (!promo.ok) {
+      cartElements.promoAmount.textContent = "Not applied";
+    } else if (promo.promo.type === "shipping") {
+      cartElements.promoAmount.textContent = "Free shipping";
+    } else {
+      cartElements.promoAmount.textContent = `−${formatPrice(totals.promoCents)}`;
+    }
+  }
+
+  // A typed mistake wins; otherwise describe the applied code
+  if (typedError) {
+    setPromoMessage(typedError, "error");
+  } else if (promo?.ok) {
+    setPromoMessage(`✓ ${promo.code}: ${promo.promo.description}`, "success");
+  } else if (promo?.reason === "minimum") {
+    // The code is kept: add a little more and it switches back on
+    setPromoMessage(
+      `${promo.code} needs ${formatPrice(promo.promo.minSubtotalCents)} in your cart. ` +
+        `Add ${formatPrice(promo.shortByCents)} more to use it.`,
+      "error"
+    );
+  } else {
+    setPromoMessage("", null);
+  }
+}
+
+// What went wrong with a typed code, in words (checkPromo()'s reasons)
+export function promoErrorMessage(result) {
+  if (result.reason === "empty") return "Type a promo code first.";
+  if (result.reason === "unknown") return `“${result.code}” isn't a valid code.`;
+  return "";
+}
+
 // totals: from calculateTotals()
-export function renderCartDrawer(totals) {
+// typedPromoError: see renderPromo()
+export function renderCartDrawer(totals, typedPromoError = "") {
   const isEmpty = totals.lines.length === 0;
   cartElements.empty.hidden = !isEmpty;
   cartElements.content.hidden = isEmpty;
@@ -255,6 +312,7 @@ export function renderCartDrawer(totals) {
   renderLines(totals.lines);
   renderShipping(totals);
   renderSummary(totals);
+  renderPromo(totals, typedPromoError);
 }
 
 // After a line is removed its buttons are gone: move focus to the line
