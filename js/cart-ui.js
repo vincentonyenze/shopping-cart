@@ -34,7 +34,15 @@ export const cartElements = {
   promoCode: document.getElementById("summary-promo-code"),
   promoAmount: document.getElementById("summary-promo"),
   promoRemove: document.getElementById("promo-remove"),
+  notice: document.getElementById("cart-notice"),
 };
+
+// ===== Notice at the top of the cart =====
+// sentences: from describeChanges(), e.g. ["Lamp sold out and was removed."]
+export function renderCartNotice(sentences) {
+  cartElements.notice.hidden = sentences.length === 0;
+  cartElements.notice.textContent = sentences.join(" ");
+}
 
 // How long "Added ✓" shows before the button goes back to normal
 const ADDED_FLASH_MS = 1200;

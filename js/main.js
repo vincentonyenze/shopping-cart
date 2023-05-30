@@ -25,6 +25,13 @@ import {
 import { calculateTotals } from "./totals.js";
 import { checkPromo } from "./promos.js";
 import {
+  STORAGE_KEY,
+  loadSavedCart,
+  reconcileSavedCart,
+  describeChanges,
+  saveCart,
+} from "./saved-cart.js";
+import {
   renderCartButton,
   updateAddButtons,
   flashAdded,
@@ -34,6 +41,7 @@ import {
   renderCartDrawer,
   focusLineAt,
   promoErrorMessage,
+  renderCartNotice,
 } from "./cart-ui.js";
 import {
   elements,
@@ -82,9 +90,13 @@ let categoryNames = {};
 // id -> product, for instant lookups from the cart
 let productsById = new Map();
 
-// What's in the cart: { items: [{ productId, quantity }] }
-// (Step 10 saves it, so it survives a refresh)
+// What's in the cart: { items: [{ productId, quantity }] }. Saved in
+// localStorage on every change, so it survives a refresh.
 let cart = EMPTY_CART;
+// Sentences about what changed in a saved cart since it was saved
+// ("Lamp sold out and was removed."), shown at the top of the cart until
+// it's next closed
+let cartNotice = [];
 // The promo code the shopper applied ("SAVE10"), or null. It's kept even
 // if the cart drops below its minimum, so it switches back on by itself.
 let promoCode = null;
@@ -340,10 +352,13 @@ function handleScreenChange() {
 // buttons can never get out of step with it.
 // Returns " You've got free shipping!" when this change crossed the line
 // (or ""), so the caller can add it to what it announces.
-function updateCart(nextCart, { bump = false } = {}) {
+// save: false when the change came FROM storage (another tab), so it isn't
+// written straight back
+function updateCart(nextCart, { bump = false, save = true } = {}) {
   const before = cartTotals();
   cart = nextCart;
   const after = cartTotals();
+  if (save) saveCart(cart, promoCode, productsById);
 
   renderCartButton(cart, { bump });
   updateAddButtons(cart, productsById);
@@ -383,6 +398,33 @@ function openCart() {
 
 function closeCart() {
   cartElements.drawer.close();
+}
+
+// However the cart was closed (✕, Esc, backdrop): the notice has been seen
+function handleCartClosed() {
+  cartNotice = [];
+  renderCartNotice(cartNotice);
+}
+
+// ===== Saved cart =====
+// Bring back the cart saved in this browser, checked against today's
+// catalog. Returns sentences about anything that had to change.
+function restoreSavedCart() {
+  const restored = reconcileSavedCart(loadSavedCart(), productsById);
+  cart = restored.cart;
+  promoCode = restored.promoCode;
+  return describeChanges(restored.changes);
+}
+
+// Another tab changed the cart. The "storage" event only fires in the
+// OTHER tabs, never the one that saved, so tabs can't keep echoing each
+// other's changes back and forth.
+function handleStorage(event) {
+  if (event.key !== STORAGE_KEY && event.key !== null) return; // null: storage cleared
+  const restored = reconcileSavedCart(loadSavedCart(), productsById);
+  promoCode = restored.promoCode;
+  promoError = "";
+  updateCart(restored.cart, { save: false });
 }
 
 // Clicks on the dark backdrop land on the <dialog> element itself
@@ -441,6 +483,7 @@ function handlePromoSubmit(event) {
     promoCode = result.code;
     promoError = "";
     cartElements.promoInput.value = "";
+    saveCart(cart, promoCode, productsById);
   } else {
     promoError = promoErrorMessage(result);
   }
@@ -453,6 +496,7 @@ function removePromo() {
   const removed = promoCode;
   promoCode = null;
   promoError = "";
+  saveCart(cart, promoCode, productsById);
   renderCartDrawer(cartTotals(), promoError);
   announce(`Removed promo code ${removed}.`);
   cartElements.promoInput.focus(); // the Remove button just disappeared
@@ -493,7 +537,15 @@ async function start() {
 
   categoryNames = Object.fromEntries(catalog.categories.map((c) => [c.slug, c.name]));
   productsById = new Map(catalog.products.map((product) => [product.id, product]));
+
+  // The cart from last time, fixed up for anything that changed since
+  cartNotice = restoreSavedCart();
   renderCartButton(cart);
+  renderCartNotice(cartNotice);
+  if (cartNotice.length > 0) {
+    saveCart(cart, promoCode, productsById); // save the fixed version
+    announce(`Your cart was updated since your last visit. ${cartNotice.join(" ")}`);
+  }
   renderCategoryOptions(catalog.categories);
 
   // Start from whatever the URL asks for. The categories have to be loaded
@@ -528,6 +580,8 @@ cartElements.lines.addEventListener("change", handleQuantityTyped);
 cartElements.promoForm.addEventListener("submit", handlePromoSubmit);
 cartElements.promoRemove.addEventListener("click", removePromo);
 cartElements.promoInput.addEventListener("input", handlePromoTyping);
+cartElements.drawer.addEventListener("close", handleCartClosed);
+window.addEventListener("storage", handleStorage);
 elements.filtersToggle.addEventListener("click", openFilters);
 elements.filtersClose.addEventListener("click", () => closeFilters());
 elements.filtersDone.addEventListener("click", () => closeFilters());
