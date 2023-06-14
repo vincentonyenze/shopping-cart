@@ -1098,6 +1098,26 @@ body:has(dialog[open]) {
   font-weight: 700;
 }
 
+/* Inside the cart: across the drawer, just under the title (at the bottom
+   it would cover the Checkout button) */
+.cart__toast {
+  position: absolute;
+  top: 4.25rem;
+  left: 1.25rem;
+  right: 1.25rem;
+  bottom: auto;
+  justify-content: space-between;
+  transform: none;
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
 /* ===== Order confirmation ===== */
 .order {
   width: min(420px, calc(100% - 2rem));
@@ -1230,7 +1250,8 @@ body:has(dialog[open]) {
 
 @media (prefers-reduced-motion: reduce) {
   .cart[open],
-  .cart-btn__count--bump {
+  .cart-btn__count--bump,
+  .cart__toast {
     animation: none;
   }
 }

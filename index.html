@@ -263,6 +263,13 @@
         <button type="button" id="checkout-btn" class="btn checkout-btn">Checkout</button>
       </div>
     </div>
+
+    <!-- "Removed iPhone 5s · Undo". Inside the cart on purpose: while a
+         modal dialog is open, everything outside it can't be clicked. -->
+    <div id="toast" class="toast cart__toast" role="status" hidden>
+      <span id="toast-message"></span>
+      <button type="button" id="toast-undo" class="toast__action">Undo</button>
+    </div>
   </dialog>
 
   <!-- One line in the cart. JavaScript copies this for every product. -->
@@ -296,11 +303,6 @@
        your cart". Sighted users see the button and badge change instead. -->
   <p id="announcer" class="visually-hidden" aria-live="polite"></p>
 
-  <!-- "Removed iPhone 5s · Undo" -->
-  <div id="toast" class="toast" role="status" hidden>
-    <span id="toast-message"></span>
-    <button type="button" id="toast-undo" class="toast__action">Undo</button>
-  </div>
 
   <!-- Shown after "Checkout" (a pretend order: no payment is taken) -->
   <dialog id="order" class="order" aria-labelledby="order-title">

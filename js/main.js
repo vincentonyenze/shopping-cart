@@ -21,6 +21,7 @@ import {
   quantityOf,
   setQuantity,
   removeFromCart,
+  restoreItem,
 } from "./cart.js";
 import { calculateTotals } from "./totals.js";
 import { checkPromo } from "./promos.js";
@@ -42,6 +43,9 @@ import {
   focusLineAt,
   promoErrorMessage,
   renderCartNotice,
+  showToast,
+  hideToast,
+  showOrderConfirmation,
 } from "./cart-ui.js";
 import {
   elements,
@@ -404,6 +408,8 @@ function closeCart() {
 function handleCartClosed() {
   cartNotice = [];
   renderCartNotice(cartNotice);
+  // Leaving the cart makes the last removal final
+  forgetRemoved();
 }
 
 // ===== Saved cart =====
@@ -445,10 +451,10 @@ function handleLinesClick(event) {
   }
 
   if (event.target.closest(".cart-line__remove")) {
-    const index = [...cartElements.lines.children].indexOf(line);
-    updateCart(removeFromCart(cart, product.id).cart);
-    announce(`Removed ${product.name} from your cart.`);
-    focusLineAt(index);
+    const result = removeFromCart(cart, product.id);
+    updateCart(result.cart);
+    offerUndo(result, product);
+    focusLineAt(result.index);
   }
 }
 
@@ -467,8 +473,77 @@ function handleQuantityTyped(event) {
 function changeQuantity(product, quantity) {
   const result = setQuantity(cart, product, quantity);
   const extra = updateCart(result.cart);
+  // Typing 0 removes the product, so it gets an Undo too
+  if (result.removed) {
+    offerUndo(result, product);
+    return;
+  }
   const message = (result.limitedBy ? limitMessage(result.limitedBy, product) : "") + extra;
   if (message) announce(message.trim());
+}
+
+// ===== Undo =====
+// How long "Removed … · Undo" stays before the removal is final. The
+// countdown pauses while the pointer or keyboard focus is on the toast,
+// so nobody loses their chance while reaching for the button.
+const UNDO_MS = 8000;
+// What was last removed and where, so Undo can put it back: { item, index, product }
+let lastRemoved = null;
+let undoTimer = null;
+
+// result: from removeFromCart() (it says what was removed and where)
+function offerUndo(result, product) {
+  lastRemoved = { item: result.removed, index: result.index, product };
+  showToast(`Removed ${product.name}`);
+  announce(`Removed ${product.name} from your cart. Undo is available for a few seconds.`);
+  startUndoCountdown();
+}
+
+function startUndoCountdown() {
+  clearTimeout(undoTimer);
+  if (lastRemoved) undoTimer = setTimeout(forgetRemoved, UNDO_MS);
+}
+
+function pauseUndoCountdown() {
+  clearTimeout(undoTimer);
+}
+
+function forgetRemoved() {
+  clearTimeout(undoTimer);
+  lastRemoved = null;
+  hideToast();
+}
+
+function handleUndo() {
+  if (!lastRemoved) return;
+  const { item, index, product } = lastRemoved;
+  forgetRemoved();
+  updateCart(restoreItem(cart, item, index));
+  announce(`${product.name} is back in your cart.`);
+  // Back onto the line that came back (the Undo button has just gone)
+  cartElements.lines
+    .querySelector(`.cart-line[data-product-id="${product.id}"] .stepper__input`)
+    ?.focus();
+}
+
+// ===== Checkout =====
+// A pretend checkout: no payment, nothing is sent anywhere. It "places"
+// the order, empties the cart and shows a confirmation.
+function handleCheckout() {
+  const totals = cartTotals();
+  if (totals.itemCount === 0) return;
+
+  // A short random order number, e.g. "A7F3C1"
+  const orderNumber = crypto.randomUUID().slice(0, 6).toUpperCase();
+
+  closeCart();
+  promoCode = null;
+  promoError = "";
+  updateCart(EMPTY_CART);
+  // The confirmation is a dialog too; when it closes, focus goes back to
+  // the 🛒 button, which is where it was before
+  showOrderConfirmation(orderNumber, totals);
+  announce(`Order ${orderNumber} placed. Thank you!`);
 }
 
 // ===== Promo codes =====
@@ -581,6 +656,13 @@ cartElements.promoForm.addEventListener("submit", handlePromoSubmit);
 cartElements.promoRemove.addEventListener("click", removePromo);
 cartElements.promoInput.addEventListener("input", handlePromoTyping);
 cartElements.drawer.addEventListener("close", handleCartClosed);
+cartElements.toastUndo.addEventListener("click", handleUndo);
+cartElements.toast.addEventListener("mouseenter", pauseUndoCountdown);
+cartElements.toast.addEventListener("mouseleave", startUndoCountdown);
+cartElements.toast.addEventListener("focusin", pauseUndoCountdown);
+cartElements.toast.addEventListener("focusout", startUndoCountdown);
+cartElements.checkoutBtn.addEventListener("click", handleCheckout);
+cartElements.orderClose.addEventListener("click", () => cartElements.orderDialog.close());
 window.addEventListener("storage", handleStorage);
 elements.filtersToggle.addEventListener("click", openFilters);
 elements.filtersClose.addEventListener("click", () => closeFilters());

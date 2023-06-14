@@ -35,7 +35,35 @@ export const cartElements = {
   promoAmount: document.getElementById("summary-promo"),
   promoRemove: document.getElementById("promo-remove"),
   notice: document.getElementById("cart-notice"),
+  toast: document.getElementById("toast"),
+  toastMessage: document.getElementById("toast-message"),
+  toastUndo: document.getElementById("toast-undo"),
+  orderDialog: document.getElementById("order"),
+  orderSummary: document.getElementById("order-summary"),
+  orderClose: document.getElementById("order-close"),
 };
+
+// ===== Undo toast =====
+export function showToast(message) {
+  cartElements.toastMessage.textContent = message;
+  cartElements.toast.hidden = false;
+}
+
+export function hideToast() {
+  cartElements.toast.hidden = true;
+}
+
+// ===== Order confirmation =====
+// orderNumber: e.g. "A7F3C1", totals: what was "paid"
+export function showOrderConfirmation(orderNumber, totals) {
+  const items = `${totals.itemCount} item${totals.itemCount === 1 ? "" : "s"}`;
+  const number = document.createElement("strong");
+  number.textContent = `#${orderNumber}`;
+  cartElements.orderSummary.replaceChildren(
+    "Order ", number, ` · ${items} · ${formatPrice(totals.totalCents)}`
+  );
+  cartElements.orderDialog.showModal();
+}
 
 // ===== Notice at the top of the cart =====
 // sentences: from describeChanges(), e.g. ["Lamp sold out and was removed."]
